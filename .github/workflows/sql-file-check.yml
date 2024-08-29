@@ -17,12 +17,15 @@ jobs:
         run: |
           git config --global --add safe.directory '*'
 
-      - name: Check for SQL file changes
+      - name: Check for SQL file changes and specific commands
         id: sql_check
         run: |
           echo "Checking for new SQL files..."
           COMMIT_URL="https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}"
           COMMIT_INFO=$(git log -1 --pretty=format:"%an committed <${COMMIT_URL}|%h>: %s")
+          KEYWORDS=("ADD COLUMN" "REMOVE COLUMN" "ALTER TABLE")
+          KEYWORDS_REGEX=$(printf "|%s" "${KEYWORDS[@]}")
+          KEYWORDS_REGEX=${KEYWORDS_REGEX:1}
           if git rev-parse HEAD~1 >/dev/null 2>&1; then
             SQL_FILES=$(git diff-tree --no-commit-id --name-only -r HEAD~1 HEAD | grep '\.sql$' || echo "")
             if [ -z "$SQL_FILES" ]; then
@@ -34,11 +37,22 @@ jobs:
               echo "found_sql=Yes" >> $GITHUB_ENV
               FILE_LINKS=""
               for file in $SQL_FILES; do
-                FILE_URL="https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF#refs/heads/}/${file}"
-                FILE_LINKS+="<${FILE_URL}|${file}>\n"
+                if grep -qE "$KEYWORDS_REGEX" "$file"; then
+                  echo "Found specified keywords in $file"
+                  FILE_URL="https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF#refs/heads/}/${file}"
+                  FILE_LINKS+=":caution: <${FILE_URL}|${file}>\n"
+                else
+                  FILE_URL="https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF#refs/heads/}/${file}"
+                  FILE_LINKS+="<${FILE_URL}|${file}>\n"
+                fi
               done
-              MESSAGE_TEXT=":construction: *New SQL Files Added* :construction:\n$COMMIT_INFO\n$FILE_LINKS"
-              echo "MESSAGE_TEXT=${MESSAGE_TEXT}" >> $GITHUB_ENV
+              if [ -n "$FILE_LINKS" ]; then
+                MESSAGE_TEXT=":construction: *SQL File Updates* :construction:\n$COMMIT_INFO\n$FILE_LINKS"
+                echo "MESSAGE_TEXT=${MESSAGE_TEXT}" >> $GITHUB_ENV
+              else
+                echo "No specified keywords found in SQL files."
+                echo "found_sql=No" >> $GITHUB_ENV
+              fi
             fi
           else
             echo "This is the first commit, no prior commit to compare."
