@@ -40,7 +40,7 @@ jobs:
                 if grep -qE "$KEYWORDS_REGEX" "$file"; then
                   echo "Found specified keywords in $file"
                   FILE_URL="https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF#refs/heads/}/${file}"
-                  FILE_LINKS+=":caution: <${FILE_URL}|${file}>\n"
+                  FILE_LINKS+=":warning: <${FILE_URL}|${file}>\n"
                 else
                   FILE_URL="https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF#refs/heads/}/${file}"
                   FILE_LINKS+="<${FILE_URL}|${file}>\n"
