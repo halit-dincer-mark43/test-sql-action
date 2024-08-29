@@ -1,0 +1,53 @@
+name: SQL File Checker
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  check_sql_files:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
+
+      - name: Set up Git
+        run: |
+          git config --global --add safe.directory '*'
+
+      - name: Check for SQL file changes
+        id: sql_check
+        run: |
+          echo "Checking for new SQL files..."
+          COMMIT_URL="https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}"
+          COMMIT_INFO=$(git log -1 --pretty=format:"%an committed <${COMMIT_URL}|%h>: %s")
+          if git rev-parse HEAD~1 >/dev/null 2>&1; then
+            SQL_FILES=$(git diff-tree --no-commit-id --name-only -r HEAD~1 HEAD | grep '\.sql$' || echo "")
+            if [ -z "$SQL_FILES" ]; then
+              echo "No new SQL files found."
+              echo "found_sql=No" >> $GITHUB_ENV
+            else
+              echo "New SQL files found:"
+              echo "$SQL_FILES"
+              echo "found_sql=Yes" >> $GITHUB_ENV
+              FILE_LINKS=""
+              for file in $SQL_FILES; do
+                FILE_URL="https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF#refs/heads/}/${file}"
+                FILE_LINKS+="<${FILE_URL}|${file}>\n"
+              done
+              MESSAGE_TEXT=":construction: *New SQL Files Added* :construction:\n$COMMIT_INFO\n$FILE_LINKS"
+              echo "MESSAGE_TEXT=${MESSAGE_TEXT}" >> $GITHUB_ENV
+            fi
+          else
+            echo "This is the first commit, no prior commit to compare."
+            echo "found_sql=No" >> $GITHUB_ENV
+          fi
+          echo "Script execution complete."
+          exit 0
+
+      - name: Notify Slack
+        if: env.found_sql == 'Yes'
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data '{"text":"${{ env.MESSAGE_TEXT }}"}' ${{ secrets.SLACK_WEBHOOK_URL }}
