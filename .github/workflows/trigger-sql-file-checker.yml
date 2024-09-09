@@ -8,7 +8,6 @@ on:
       - '**/*.sql'
 jobs:
   trigger_schema_change_monitor_workflow:
-    runs-on: ubuntu-latest
     uses: halit-dincer-mark43/test-sql-action/.github/workflows/sql-file-check.yml@main
     secrets:
       slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
