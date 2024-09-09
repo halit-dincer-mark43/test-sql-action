@@ -1,67 +1,53 @@
-name: SQL File Checker
+name: SQL Files Change Monitor Workflow
+
 on:
-  push:
-    branches:
-      - main
+  workflow_call:
+    secrets:
+      slack_webhook_url:
+        required: true
 
 jobs:
-  check_sql_files:
+  review_new_sql_files:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+
+      - name: Get all changed SQL files
+        id: changed-files
+        uses: tj-actions/changed-files@v44
         with:
-          fetch-depth: 2
+          files: |
+            **.sql
 
-      - name: Set up Git
+      - name: Set up environment
         run: |
-          git config --global --add safe.directory '*'
+          echo "COMMIT_URL=https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}" >> $GITHUB_ENV
+          echo "KEYWORDS_REGEX=ADD COLUMN|REMOVE COLUMN|ALTER TABLE" >> $GITHUB_ENV
 
-      - name: Check for SQL file changes and specific commands
-        id: sql_check
+      - name: Analyze SQL files
+        if: ${{ steps.changed-files.outputs.all_changed_files }}
         run: |
-          echo "Checking for new SQL files..."
-          COMMIT_URL="https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}"
-          COMMIT_INFO=$(git log -1 --pretty=format:"%an committed <${COMMIT_URL}|%h>: %s")
-          KEYWORDS=("ADD COLUMN" "REMOVE COLUMN" "ALTER TABLE")
-          KEYWORDS_REGEX=$(printf "|%s" "${KEYWORDS[@]}")
-          KEYWORDS_REGEX=${KEYWORDS_REGEX:1}
-          if git rev-parse HEAD~1 >/dev/null 2>&1; then
-            SQL_FILES=$(git diff-tree --no-commit-id --name-only -r HEAD~1 HEAD | grep '\.sql$' || echo "")
-            if [ -z "$SQL_FILES" ]; then
-              echo "No new SQL files found."
-              echo "found_sql=No" >> $GITHUB_ENV
+          SQL_FILES=(${{ steps.changed-files.outputs.all_changed_files }})
+          FILE_LINKS=""
+          for file in "${SQL_FILES[@]}"; do
+            if grep -qE "${KEYWORDS_REGEX}" "$file"; then
+              FILE_URL="https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF#refs/heads/}/${file}"
+              FILE_LINKS+=":warning: <$FILE_URL|$file>\n"
             else
-              echo "New SQL files found:"
-              echo "$SQL_FILES"
-              echo "found_sql=Yes" >> $GITHUB_ENV
-              FILE_LINKS=""
-              for file in $SQL_FILES; do
-                if grep -qE "$KEYWORDS_REGEX" "$file"; then
-                  echo "Found specified keywords in $file"
-                  FILE_URL="https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF#refs/heads/}/${file}"
-                  FILE_LINKS+=":warning: <${FILE_URL}|${file}>\n"
-                else
-                  FILE_URL="https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF#refs/heads/}/${file}"
-                  FILE_LINKS+="<${FILE_URL}|${file}>\n"
-                fi
-              done
-              if [ -n "$FILE_LINKS" ]; then
-                MESSAGE_TEXT=":construction: *SQL File Updates* :construction:\n$COMMIT_INFO\n$FILE_LINKS"
-                echo "MESSAGE_TEXT=${MESSAGE_TEXT}" >> $GITHUB_ENV
-              else
-                echo "No specified keywords found in SQL files."
-                echo "found_sql=No" >> $GITHUB_ENV
-              fi
+              FILE_URL="https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF#refs/heads/}/${file}"
+              FILE_LINKS+="<$FILE_URL|$file>\n"
             fi
+          done
+          if [ -n "$FILE_LINKS" ]; then
+            MESSAGE_TEXT=":construction: *SQL File Updates* :construction:\n${COMMIT_URL}\n$FILE_LINKS"
+            echo "found_sql=Yes" >> $GITHUB_ENV
+            echo "MESSAGE_TEXT=$MESSAGE_TEXT" >> $GITHUB_ENV
           else
-            echo "This is the first commit, no prior commit to compare."
             echo "found_sql=No" >> $GITHUB_ENV
           fi
-          echo "Script execution complete."
-          exit 0
 
       - name: Notify Slack
         if: env.found_sql == 'Yes'
         run: |
-          curl -X POST -H 'Content-type: application/json' --data '{"text":"${{ env.MESSAGE_TEXT }}"}' ${{ secrets.SLACK_WEBHOOK_URL }}
+          curl -X POST -H 'Content-type: application/json' --data '{"text":"${{ env.MESSAGE_TEXT }}"}' ${{ secrets.slack_webhook_url }}
