@@ -1,4 +1,4 @@
-name: Call SQL File Checker
+name: Call Schema Change Monitor
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  trigger_sql_file_checker:
+  trigger_schema_change-monitor:
     uses: halit-dincer-mark43/test-sql-action/.github/workflows/sql-file-check.yml@main
     secrets:
       slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}

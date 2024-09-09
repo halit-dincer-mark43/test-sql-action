@@ -1,4 +1,4 @@
-name: SQL Files Change Monitor Workflow
+name: Schema Change Monitor Workflow
 
 on:
   workflow_call:
@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4.1.1
 
       - name: Get all changed SQL files
         id: changed-files
@@ -36,7 +36,7 @@ jobs:
               FILE_LINKS+=":warning: <$FILE_URL|$file>\n"
             else
               FILE_URL="https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF#refs/heads/}/${file}"
-              FILE_LINKS+="<$FILE_URL|$file>\n"
+              FILE_LINKS+=":ok: <$FILE_URL|$file>\n"
             fi
           done
           if [ -n "$FILE_LINKS" ]; then
