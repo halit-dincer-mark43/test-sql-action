@@ -45,9 +45,9 @@ jobs:
             fi
           done
           if [ -n "$FILE_LINKS" ]; then
-            MESSAGE_TEXT=":construction: *SQL File Updates* :construction:\\n${COMMIT_AUTHOR} committed <${COMMIT_LINK}|${COMMIT_MESSAGE}> at ${GITHUB_REPOSITORY}\\n${FILE_LINKS}"
-            echo "found_sql=Yes" >> $GITHUB_ENV
-            echo "MESSAGE_TEXT=$(echo \"$MESSAGE_TEXT\" | jq -aRs .)" >> $GITHUB_ENV
+            MESSAGE_TEXT=":construction: *SQL File Updates* :construction:\n*Repository:* ${GITHUB_REPOSITORY}\n*Author:* ${COMMIT_AUTHOR}\n*Commit:* <$COMMIT_URL|${COMMIT_MESSAGE}>\n$FILE_LINKS"
+            echo "MESSAGE_TEXT=$MESSAGE_TEXT"
+            echo "found_sql=Yes" >> $GITHUB_ENV  
           else
             echo "found_sql=No" >> $GITHUB_ENV
           fi
