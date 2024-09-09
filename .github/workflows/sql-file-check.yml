@@ -50,6 +50,7 @@ jobs:
             echo "MESSAGE_TEXT=$MESSAGE_TEXT" >> $GITHUB_ENV
           else
             echo "found_sql=No" >> $GITHUB_ENV
+          fi
 
       - name: Notify Slack
         if: env.found_sql == 'Yes'
