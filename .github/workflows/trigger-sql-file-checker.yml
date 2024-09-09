@@ -1,4 +1,4 @@
-name: Call Schema Change Monitor
+name: Schema Change Monitor
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     paths:
       - '**/*.sql'
 jobs:
-  trigger_schema_change_monitor:
+  trigger_schema_change_monitor_workflow:
     runs-on: ubuntu-latest
     uses: halit-dincer-mark43/test-sql-action/.github/workflows/sql-file-check.yml@main
     secrets:
