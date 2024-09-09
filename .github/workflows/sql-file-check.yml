@@ -18,7 +18,7 @@ jobs:
         run: |
           echo "COMMIT_AUTHOR=$(git log -1 --pretty=format:'%an')" >> $GITHUB_ENV
           echo "COMMIT_MESSAGE=$(git log -1 --pretty=format:'%s')" >> $GITHUB_ENV
-          echo "COMMIT_LINK=https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}" >> $GITHUB_ENV
+          echo "COMMIT_URL=https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}" >> $GITHUB_ENV
 
       - name: Get all changed SQL files
         id: changed-files
@@ -39,18 +39,17 @@ jobs:
           for file in "${SQL_FILES[@]}"; do
             FILE_URL="https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF#refs/heads/}/${file}"
             if grep -qE "${KEYWORDS_REGEX}" "$file"; then
-              FILE_LINKS+=":warning: <$FILE_URL|$file>\\n"
+              FILE_LINKS+=":warning: <$FILE_URL|$file>\n"
             else
-              FILE_LINKS+=":ok: <$FILE_URL|$file>\\n"
+              FILE_LINKS+=":ok: <$FILE_URL|$file>\n"
             fi
           done
           if [ -n "$FILE_LINKS" ]; then
-            MESSAGE_TEXT=":construction: *SQL File Updates* :construction:\n*Repository:* ${GITHUB_REPOSITORY}\n*Author:* ${COMMIT_AUTHOR}\n*Commit:* <$COMMIT_LINK|${COMMIT_MESSAGE}>\n$FILE_LINKS"
-            echo "MESSAGE_TEXT=$MESSAGE_TEXT"
-            echo "found_sql=Yes" >> $GITHUB_ENV  
+            MESSAGE_TEXT=":construction: *SQL File Updates* :construction:\n*Repository:* ${GITHUB_REPOSITORY}\n*Author:* ${COMMIT_AUTHOR}\n*Commit:* <$COMMIT_URL|${COMMIT_MESSAGE}>\n$FILE_LINKS"
+            echo "found_sql=Yes" >> $GITHUB_ENV
+            echo "MESSAGE_TEXT=$MESSAGE_TEXT" >> $GITHUB_ENV
           else
             echo "found_sql=No" >> $GITHUB_ENV
-          fi
 
       - name: Notify Slack
         if: env.found_sql == 'Yes'
