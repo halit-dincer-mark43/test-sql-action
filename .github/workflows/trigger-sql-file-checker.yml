@@ -1,0 +1,12 @@
+name: Call SQL File Checker
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  trigger_sql_file_checker:
+    uses: halit-dincer-mark43/test-sql-action/blob/main/.github/workflows/sql-file-check.yml@main
+    secrets:
+      slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
